@@ -1,26 +1,135 @@
 @import "tailwindcss";
 
+/* ─── Design Tokens (Tailwind theme) ────────────────────────── */
+@theme {
+  --font-display: var(--font-space-grotesk), "Space Grotesk", system-ui, sans-serif;
+  --font-body:    var(--font-inter), "Inter", system-ui, sans-serif;
+
+  /* Brand — invariáveis entre temas */
+  --color-pyros-red:  #EF4444;
+  --color-thermal:    #F59E0B;
+  --color-critical:   #DC2626;
+  --color-warning:    #FACC15;
+  --color-success:    #22C55E;
+  --color-info:       #38BDF8;
+}
+
+/* ─── Variáveis semânticas — Dark (default) ──────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-base:     #020617;
+  --bg-surface:  #0F172A;
+  --bg-elevated: #1E293B;
+  --border:      rgba(255, 255, 255, 0.08);
+
+  --text-primary:   #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted:     #64748B;
+
+  --header-bg: rgba(2, 6, 23, 0.85);
+
+  --scrollbar-thumb: #1E293B;
+  --scrollbar-hover: #334155;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ─── Variáveis semânticas — Light ──────────────────────────── */
+.light {
+  --bg-base:     #F1F5F9;
+  --bg-surface:  #FFFFFF;
+  --bg-elevated: #E2E8F0;
+  --border:      rgba(0, 0, 0, 0.08);
+
+  --text-primary:   #0F172A;
+  --text-secondary: #475569;
+  --text-muted:     #94A3B8;
+
+  --header-bg: rgba(241, 245, 249, 0.90);
+
+  --scrollbar-thumb: #CBD5E1;
+  --scrollbar-hover: #94A3B8;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Reset & Base ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ─── Tipografia ─────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+h1 { font-size: 40px; font-weight: 700; line-height: 1.1; }
+h2 { font-size: 32px; font-weight: 600; line-height: 1.2; }
+h3 { font-size: 24px; font-weight: 600; line-height: 1.3; }
+
+/* ─── Utility classes semânticas ─────────────────────────────── */
+.font-display { font-family: var(--font-display); }
+.font-body    { font-family: var(--font-body); }
+
+.bg-base     { background-color: var(--bg-base); }
+.bg-surface  { background-color: var(--bg-surface); }
+.bg-elevated { background-color: var(--bg-elevated); }
+.border-subtle { border-color: var(--border); }
+
+.text-primary   { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted     { color: var(--text-muted); }
+
+/* ─── Scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
+/* ─── Mapbox popup ───────────────────────────────────────────── */
+.mapboxgl-popup-content {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  color: var(--text-primary) !important;
+  padding: 16px !important;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.35) !important;
+}
+.mapboxgl-popup-tip {
+  border-top-color:    var(--bg-surface) !important;
+  border-bottom-color: var(--bg-surface) !important;
+}
+.mapboxgl-popup-close-button {
+  color: var(--text-muted) !important;
+  font-size: 18px !important;
+  top: 8px !important;
+  right: 8px !important;
+}
+
+/* Tooltip hover — sem fundo/borda extra */
+.pyros-tooltip .mapboxgl-popup-content {
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  pointer-events: none;
+}
+.pyros-tooltip .mapboxgl-popup-tip { display: none; }
+
+/* Animação pulsar nos focos críticos */
+@keyframes pulsar {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  70%  { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
 }
