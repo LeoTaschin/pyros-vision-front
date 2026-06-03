@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 
 // ── Config ─────────────────────────────────────────────────────────
@@ -57,8 +57,11 @@ function CameraTile({ cam, onClick }: { cam: Cam; onClick: () => void }) {
   const isOffline = cam.status === "OFFLINE";
   const isCritico = cam.status === "CRITICO";
   const isAlerta  = cam.status === "ALERTA";
-  const { resolvedTheme } = useTheme();
-  const isLight   = resolvedTheme === "light";
+  const [tMounted, setTMounted]   = useState(false);
+  const { resolvedTheme }         = useTheme();
+  const isLight                   = tMounted && resolvedTheme === "light";
+
+  useEffect(() => setTMounted(true), []);
 
   const borderBase = isCritico
     ? `${cfg.cor}60`
@@ -342,8 +345,11 @@ function CameraExpandida({ cam, onVoltar }: { cam: Cam; onVoltar: () => void }) 
 // ── CameraGrid ─────────────────────────────────────────────────────
 export default function CameraGrid() {
   const [expandida, setExpandida] = useState<Cam | null>(null);
+  const [mounted,   setMounted]   = useState(false);
   const { resolvedTheme }         = useTheme();
-  const isLight                   = resolvedTheme === "light";
+  const isLight                   = mounted && resolvedTheme === "light";
+
+  useEffect(() => setMounted(true), []);
 
   if (expandida) {
     return <CameraExpandida cam={expandida} onVoltar={() => setExpandida(null)} />;

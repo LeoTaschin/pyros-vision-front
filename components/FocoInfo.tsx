@@ -126,10 +126,10 @@ export default function FocoInfo({ foco, onClose }: Props) {
         {/* Coordenadas — canto inferior direito */}
         <div style={{
           position: "absolute", bottom: 10, right: 10, zIndex: 1,
-          background: "var(--map-badge-coords)",
+          background: "var(--map-badge-bg)",
           backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
           borderRadius: 5, padding: "3px 7px",
-          fontSize: 10, color: "var(--map-badge-color)",
+          fontSize: 10, color: "rgba(29, 29, 29, 0.55)",
           fontVariantNumeric: "tabular-nums",
         }}>
           {Math.abs(foco.lat).toFixed(4)}°S &nbsp; {Math.abs(foco.lon).toFixed(4)}°O
