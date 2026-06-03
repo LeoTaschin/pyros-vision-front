@@ -27,6 +27,10 @@ export default function Mapa({ focos, onFocoClick }: Props) {
   // ── Inicializa o mapa uma vez ─────────────────────────────
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    if (!mapboxgl.supported()) {
+      console.warn("[Mapa] WebGL not supported in this environment");
+      return;
+    }
 
     // Usa dark como padrão até next-themes resolver
     const estilo = resolvedTheme === "light" ? STYLE_LIGHT : STYLE_DARK;
