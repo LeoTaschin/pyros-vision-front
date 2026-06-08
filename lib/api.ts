@@ -85,3 +85,27 @@ export function criarWebSocket(): WebSocket {
   const url = BASE.replace(/^http/, "ws");
   return new WebSocket(`${url}/ws/camera`);
 }
+
+export interface LeituraSensor {
+  device_id: string;
+  temperatura: number | null;
+  umidade: number | null;
+  fumaca: number;
+  nivel: "NORMAL" | "ATENCAO" | "PERIGO";
+  timestamp: string;
+}
+
+export interface RespostaSensores {
+  leituras: LeituraSensor[];
+  total: number;
+}
+
+export async function getSensores(): Promise<RespostaSensores> {
+  const res = await fetch(`${BASE}/api/sensores`, { cache: "no-store" });
+  return res.json();
+}
+
+export async function getUltimoSensor(): Promise<{ leitura: LeituraSensor | null }> {
+  const res = await fetch(`${BASE}/api/sensores/ultimo`, { cache: "no-store" });
+  return res.json();
+}
