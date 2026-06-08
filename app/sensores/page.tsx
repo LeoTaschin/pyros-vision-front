@@ -149,13 +149,23 @@ function TabelaHistorico({ leituras }: { leituras: LeituraSensor[] }) {
   );
 }
 
+// Tempo máximo sem leitura antes de considerar ESP32 offline (ms)
+const TIMEOUT_DISPOSITIVO = 15_000;
+
 export default function SensoresPage() {
-  const [ultimo,    setUltimo]    = useState<LeituraSensor | null>(null);
-  const [historico, setHistorico] = useState<LeituraSensor[]>([]);
-  const [conectado, setConectado] = useState(false);
-  const [erro,      setErro]      = useState(false);
-  const [ultima,    setUltima]    = useState("");
-  const wsRef = useRef<WebSocket | null>(null);
+  const [ultimo,         setUltimo]         = useState<LeituraSensor | null>(null);
+  const [historico,      setHistorico]      = useState<LeituraSensor[]>([]);
+  const [conectado,      setConectado]      = useState(false);
+  const [dispositivoOff, setDispositivoOff] = useState(false);
+  const [ultima,         setUltima]         = useState("");
+  const wsRef        = useRef<WebSocket | null>(null);
+  const timeoutRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function resetarTimeoutDispositivo() {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setDispositivoOff(false);
+    timeoutRef.current = setTimeout(() => setDispositivoOff(true), TIMEOUT_DISPOSITIVO);
+  }
 
   useEffect(() => {
     function conectar() {
@@ -164,7 +174,6 @@ export default function SensoresPage() {
 
       ws.onopen = () => {
         setConectado(true);
-        setErro(false);
       };
 
       ws.onmessage = (e) => {
@@ -174,14 +183,18 @@ export default function SensoresPage() {
 
         if (data.tipo === "historico") {
           setHistorico(data.leituras);
-          if (data.leituras.length > 0) setUltimo(data.leituras[0]);
+          if (data.leituras.length > 0) {
+            setUltimo(data.leituras[0]);
+            resetarTimeoutDispositivo();
+          }
         } else {
           setUltimo(data);
           setHistorico((prev) => [data, ...prev].slice(0, 50));
+          resetarTimeoutDispositivo();
         }
       };
 
-      ws.onerror = () => setErro(true);
+      ws.onerror = () => {};
 
       ws.onclose = () => {
         setConectado(false);
@@ -190,7 +203,10 @@ export default function SensoresPage() {
     }
 
     conectar();
-    return () => wsRef.current?.close();
+    return () => {
+      wsRef.current?.close();
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, []);
 
   return (
@@ -221,35 +237,90 @@ export default function SensoresPage() {
                   Última leitura às {ultima}
                 </span>
               )}
-              <span style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "5px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,
-                color:      conectado ? "#22C55E" : "#EF4444",
-                background: conectado ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.10)",
-                border:     `1px solid ${conectado ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
-              }}>
-                <span style={{
-                  width: 6, height: 6, borderRadius: "50%",
-                  background: conectado ? "#22C55E" : "#EF4444",
-                }} />
-                {conectado ? "Conectado" : "Reconectando..."}
-              </span>
+              {(() => {
+                const cor = !conectado ? "#6B7280"
+                          : dispositivoOff ? "#F59E0B"
+                          : "#22C55E";
+                const bg  = !conectado ? "rgba(107,114,128,0.10)"
+                          : dispositivoOff ? "rgba(245,158,11,0.10)"
+                          : "rgba(34,197,94,0.10)";
+                const label = !conectado ? "Reconectando..."
+                            : dispositivoOff ? "ESP32 offline"
+                            : "Ao vivo";
+                return (
+                  <span style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "5px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                    color: cor, background: bg,
+                    border: `1px solid ${cor}40`,
+                  }}>
+                    <span style={{
+                      width: 6, height: 6, borderRadius: "50%",
+                      background: cor,
+                      boxShadow: !dispositivoOff && conectado ? `0 0 0 3px ${cor}30` : "none",
+                    }} />
+                    {label}
+                  </span>
+                );
+              })()}
             </div>
           </div>
 
-          {/* Erro */}
-          {erro && (
+          {/* Banner — ESP32 sem sinal */}
+          {dispositivoOff && conectado && (
             <div style={{
-              padding: "10px 16px", marginBottom: 16, borderRadius: 10,
-              background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)",
-              fontSize: 12, color: "#DC2626",
+              display:      "flex",
+              alignItems:   "center",
+              gap:          14,
+              padding:      "16px 20px",
+              marginBottom: 20,
+              borderRadius: 14,
+              background:   "rgba(245,158,11,0.07)",
+              border:       "1px solid rgba(245,158,11,0.30)",
             }}>
-              Erro ao conectar com o dispositivo. Verifique a API.
+              {/* Ícone antena */}
+              <div style={{
+                flexShrink:     0,
+                width:          40,
+                height:         40,
+                borderRadius:   10,
+                background:     "rgba(245,158,11,0.12)",
+                border:         "1px solid rgba(245,158,11,0.25)",
+                display:        "flex",
+                alignItems:     "center",
+                justifyContent: "center",
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                  <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+                  <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+                  <path d="M10.71 5.05A16 16 0 0 1 22.56 9"/>
+                  <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+                  <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                  <circle cx="12" cy="20" r="1" fill="#F59E0B"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "#F59E0B", margin: 0, fontFamily: "var(--font-display)" }}>
+                  Dispositivo sem conexão
+                </p>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "3px 0 0" }}>
+                  Nenhuma leitura recebida nos últimos 15 segundos. Verifique se o ESP32 está ligado e conectado ao Wi-Fi.
+                </p>
+              </div>
+              {ultima && (
+                <div style={{ flexShrink: 0, textAlign: "right" }}>
+                  <p style={{ fontSize: 10, color: "var(--text-muted)", margin: 0 }}>Última leitura</p>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", margin: "2px 0 0", fontFamily: "monospace" }}>
+                    {ultima}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
           {/* Sem dados */}
-          {!erro && !ultimo && (
+          {!ultimo && (
             <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-muted)", fontSize: 13 }}>
               Aguardando primeira leitura do ESP32...
             </div>
