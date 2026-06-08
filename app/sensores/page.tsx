@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import Header from "@/components/Header";
-import { getSensores, getUltimoSensor } from "@/lib/api";
-import type { LeituraSensor, RespostaSensores } from "@/lib/api";
+import { criarWebSocketSensores } from "@/lib/api";
+import type { LeituraSensor } from "@/lib/api";
 
 const COR_NIVEL: Record<string, string> = {
   NORMAL:  "#22C55E",
@@ -150,28 +150,48 @@ function TabelaHistorico({ leituras }: { leituras: LeituraSensor[] }) {
 }
 
 export default function SensoresPage() {
-  const [ultimo,   setUltimo]   = useState<LeituraSensor | null>(null);
-  const [historico, setHistorico] = useState<RespostaSensores | null>(null);
-  const [erro,     setErro]     = useState(false);
-  const [ultima,   setUltima]   = useState("");
-
-  const carregar = useCallback(async () => {
-    try {
-      setErro(false);
-      const [u, h] = await Promise.all([getUltimoSensor(), getSensores()]);
-      setUltimo(u.leitura);
-      setHistorico(h);
-      setUltima(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
-    } catch {
-      setErro(true);
-    }
-  }, []);
+  const [ultimo,    setUltimo]    = useState<LeituraSensor | null>(null);
+  const [historico, setHistorico] = useState<LeituraSensor[]>([]);
+  const [conectado, setConectado] = useState(false);
+  const [erro,      setErro]      = useState(false);
+  const [ultima,    setUltima]    = useState("");
+  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    carregar();
-    const id = setInterval(carregar, 10_000);
-    return () => clearInterval(id);
-  }, [carregar]);
+    function conectar() {
+      const ws = criarWebSocketSensores();
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        setConectado(true);
+        setErro(false);
+      };
+
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        const agora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        setUltima(agora);
+
+        if (data.tipo === "historico") {
+          setHistorico(data.leituras);
+          if (data.leituras.length > 0) setUltimo(data.leituras[0]);
+        } else {
+          setUltimo(data);
+          setHistorico((prev) => [data, ...prev].slice(0, 50));
+        }
+      };
+
+      ws.onerror = () => setErro(true);
+
+      ws.onclose = () => {
+        setConectado(false);
+        setTimeout(conectar, 3000);
+      };
+    }
+
+    conectar();
+    return () => wsRef.current?.close();
+  }, []);
 
   return (
     <>
@@ -192,30 +212,28 @@ export default function SensoresPage() {
                 Sensores de Campo
               </h1>
               <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-                ESP32 · DHT11 + MQ-2 · atualiza a cada 10s
+                ESP32 · DHT11 + MQ-2 · tempo real
               </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               {ultima && (
                 <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                  Atualizado às {ultima}
+                  Última leitura às {ultima}
                 </span>
               )}
-              <button
-                onClick={carregar}
-                style={{
-                  padding:      "6px 14px",
-                  borderRadius: 8,
-                  border:       "1px solid var(--border)",
-                  background:   "var(--bg-elevated)",
-                  color:        "var(--text-secondary)",
-                  fontSize:     12,
-                  cursor:       "pointer",
-                  fontFamily:   "var(--font-display)",
-                }}
-              >
-                Atualizar
-              </button>
+              <span style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "5px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                color:      conectado ? "#22C55E" : "#EF4444",
+                background: conectado ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.10)",
+                border:     `1px solid ${conectado ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+              }}>
+                <span style={{
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: conectado ? "#22C55E" : "#EF4444",
+                }} />
+                {conectado ? "Conectado" : "Reconectando..."}
+              </span>
             </div>
           </div>
 
@@ -239,8 +257,8 @@ export default function SensoresPage() {
 
           {/* Conteúdo */}
           {ultimo && <CardUltima leitura={ultimo} />}
-          {historico && historico.leituras.length > 0 && (
-            <TabelaHistorico leituras={historico.leituras} />
+          {historico.length > 0 && (
+            <TabelaHistorico leituras={historico} />
           )}
 
         </div>

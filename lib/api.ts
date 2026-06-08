@@ -109,3 +109,8 @@ export async function getUltimoSensor(): Promise<{ leitura: LeituraSensor | null
   const res = await fetch(`${BASE}/api/sensores/ultimo`, { cache: "no-store" });
   return res.json();
 }
+
+export function criarWebSocketSensores(): WebSocket {
+  const url = BASE.replace(/^http/, "ws");
+  return new WebSocket(`${url}/ws/sensores`);
+}
