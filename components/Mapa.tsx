@@ -1,28 +1,27 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { useTheme } from "next-themes";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { Foco } from "@/lib/api";
+import type { BaseDrone } from "@/components/BasesDronesMapa";
 import FocosMapa from "@/components/FocosMapa";
+import BasesDronesMapa from "@/components/BasesDronesMapa";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
-const STYLE_LIGHT = "mapbox://styles/tascoleo/cmpwy1n0z005701s5h82vcb81";
-const STYLE_DARK  = "mapbox://styles/tascoleo/cmpwycapz000701s00m9y4kbl";
-
 interface Props {
-  focos:       Foco[];
-  onFocoClick: (foco: Foco) => void;
+  focos:        Foco[];
+  estilo:       string;
+  onFocoClick:  (foco: Foco) => void;
+  onBaseClick:  (base: BaseDrone) => void;
 }
 
-export default function Mapa({ focos, onFocoClick }: Props) {
+export default function Mapa({ focos, estilo, onFocoClick, onBaseClick }: Props) {
   const containerRef             = useRef<HTMLDivElement>(null);
   const mapRef                   = useRef<mapboxgl.Map | null>(null);
   const styleAtualRef            = useRef<string>("");
   const [mapReady, setMapReady]  = useState(false);
-  const { resolvedTheme }        = useTheme();
 
   // ── Inicializa o mapa uma vez ─────────────────────────────
   useEffect(() => {
@@ -32,8 +31,6 @@ export default function Mapa({ focos, onFocoClick }: Props) {
       return;
     }
 
-    // Usa dark como padrão até next-themes resolver
-    const estilo = resolvedTheme === "light" ? STYLE_LIGHT : STYLE_DARK;
     styleAtualRef.current = estilo;
 
     const map = new mapboxgl.Map({
@@ -49,37 +46,36 @@ export default function Mapa({ focos, onFocoClick }: Props) {
     mapRef.current = map;
     return () => {
       map.remove();
-      mapRef.current = null;
-      setMapReady(false);
+      mapRef.current    = null;
       styleAtualRef.current = "";
+      setMapReady(false);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Troca estilo só quando o tema REALMENTE muda ──────────
+  // ── Troca estilo quando o tema muda ───────────────────────
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || estilo === styleAtualRef.current) return;
+    styleAtualRef.current = estilo;
 
-    const novoEstilo = resolvedTheme === "light" ? STYLE_LIGHT : STYLE_DARK;
-
-    // Evita setStyle() se o estilo já é o correto — previne apagar layers
-    if (novoEstilo === styleAtualRef.current) return;
-    styleAtualRef.current = novoEstilo;
-
+    const aplicar = () => map.setStyle(estilo);
     if (map.isStyleLoaded()) {
-      map.setStyle(novoEstilo);
+      aplicar();
     } else {
-      map.once("load", () => map.setStyle(novoEstilo));
+      map.once("load", aplicar);
     }
-  }, [resolvedTheme]);
+  }, [estilo]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 
       {mapReady && mapRef.current && (
-        <FocosMapa map={mapRef.current} focos={focos} onFocoClick={onFocoClick} />
+        <>
+          <FocosMapa map={mapRef.current} focos={focos} onFocoClick={onFocoClick} />
+          <BasesDronesMapa map={mapRef.current} onBaseClick={onBaseClick} />
+        </>
       )}
     </div>
   );
