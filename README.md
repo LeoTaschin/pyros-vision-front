@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pyros Vision
 
-## Getting Started
+Dashboard de monitoramento de queimadas para o estado de São Paulo. Combina dados de satélite da NASA FIRMS com detecção de fogo e fumaça por visão computacional (Roboflow) e leituras de sensores IoT (ESP32) em tempo real.
 
-First, run the development server:
+## Funcionalidades
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+| Módulo | Descrição |
+|--------|-----------|
+| **Mapa** | Focos de calor ativos exibidos sobre mapa Mapbox com marcadores por nível de risco (CRÍTICO / ALERTA / MONITORANDO). Bases de drones clicáveis com informações de cobertura e risco médio. |
+| **Câmeras** | Feed ao vivo da webcam com detecção de fogo e fumaça via WebSocket. Bounding boxes em tempo real e log de detecções. |
+| **Focos** | Lista de focos ordenada por proximidade com dados de satélite (brilho, FRP, confiança, dia/noite). |
+| **Frota** | Status da frota de drones — disponíveis, em missão e em manutenção — por base. |
+| **Sensores** | Leituras de temperatura, umidade e fumaça de sensores ESP32 via WebSocket, com histórico em gráfico. |
+
+## Stack
+
+- **Next.js 16** + React 19 + TypeScript
+- **Mapbox GL / react-map-gl** — mapas interativos com estilos customizados (claro e escuro)
+- **Recharts** — gráficos de histórico dos sensores
+- **Tailwind CSS v4** — utilitários de layout
+- **WebSocket** — atualizações em tempo real para câmera e sensores
+
+## Pré-requisitos
+
+- Node.js 20+
+- Token de acesso do [Mapbox](https://account.mapbox.com/)
+- Backend Pyros rodando (expõe `/api/focos`, `/api/drones`, `/api/sensores`, `/ws/camera`, `/ws/sensores`)
+
+## Configuração
+
+Crie um arquivo `.env.local` na raiz do projeto:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_MAPBOX_TOKEN=pk.seu_token_aqui
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Desenvolvimento
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Acesse `http://localhost:3000`.
 
-## Learn More
+## Build de produção
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+npm start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Estrutura
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+app/
+  layout.tsx          # Providers globais (tema, fontes)
+  page.tsx            # Página principal — mapa + painéis
+  cameras/            # Feed ao vivo + detecção
+  focos/              # Lista de focos de calor
+  frota/              # Gestão da frota de drones
+  sensores/           # Leituras dos sensores IoT
 
-## Deploy on Vercel
+components/
+  Mapa.tsx            # Mapa Mapbox principal
+  FocosMapa.tsx       # Camada de focos sobre o mapa
+  BasesDronesMapa.tsx # Camada de bases de drones
+  CameraView.tsx      # Feed de câmera com bounding boxes
+  GraficoHistorico.tsx # Gráfico Recharts para sensores
+  Header.tsx          # Navegação flutuante com relógio
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+lib/
+  api.ts              # Funções fetch + tipos TypeScript da API
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## API esperada
+
+O frontend consome os seguintes endpoints do backend:
+
+| Endpoint | Método | Descrição |
+|----------|--------|-----------|
+| `/api/focos` | GET | Lista de focos de calor com nível geral |
+| `/api/drones` | GET | Status da frota de drones |
+| `/api/sensores` | GET | Histórico de leituras dos sensores |
+| `/api/sensores/ultimo` | GET | Última leitura disponível |
+| `/api/analisar` | POST | Análise de imagem por visão computacional |
+| `/ws/camera` | WS | Stream bidirecional: envia frames JPEG, recebe detecções |
+| `/ws/sensores` | WS | Stream unidirecional: leituras em tempo real |
